@@ -418,7 +418,7 @@ export default class ActionBinder {
         this.acrobatApiConfig.acrobatEndpoint.createAsset,
         { body: JSON.stringify(data) },
       );
-      this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'uploading' } }));
+      this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'uploading', data: assetData } }));
       await this.chunkPdf(assetData, blobData, file.type);
       const operationItem = {
         assetId: assetData.id,
