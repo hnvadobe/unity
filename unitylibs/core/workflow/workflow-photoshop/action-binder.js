@@ -10,6 +10,7 @@ import {
   loadStyle,
   createTag,
   loadSvgs,
+  getLocale,
 } from '../../../scripts/utils.js';
 
 export default class ActionBinder {
@@ -323,6 +324,7 @@ export default class ActionBinder {
       assetId: null,
       targetProduct: this.workflowCfg.productName,
       payload: {
+        locale: getLocale(),
         finalAssetId: null,
         operations: [],
       },

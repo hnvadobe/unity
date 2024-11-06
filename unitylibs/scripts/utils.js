@@ -64,6 +64,13 @@ export function defineDeviceByScreenSize() {
   return 'TABLET';
 }
 
+export function getLocale() {
+  const urlLocale = window.location.pathname.split('/')[1];
+  const { locales } = getConfig();
+  const locale = Object.entries(locales).find(([key]) => key === urlLocale);
+  return locale ? locale[1].ietf : 'en_US';
+}
+
 export async function loadSvg(src) {
   try {
     const res = await fetch(src, { mode: 'no-cors' });

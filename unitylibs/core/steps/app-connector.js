@@ -1,10 +1,11 @@
-import { createActionBtn, createIntersectionObserver, getHeaders } from '../../scripts/utils.js';
+import { createActionBtn, createIntersectionObserver, getHeaders, getLocale } from '../../scripts/utils.js';
 
 function getPreludeData(cfg) {
   const dataObj = {
     assetId: cfg.preludeState.assetId,
     targetProduct: 'Photoshop',
     payload: {
+      locale: getLocale(),
       finalAssetId: cfg.preludeState.finalAssetId,
       operations: [...cfg.preludeState.operations],
     },
