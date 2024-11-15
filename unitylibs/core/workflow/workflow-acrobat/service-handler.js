@@ -4,7 +4,6 @@
 /* eslint-disable no-restricted-syntax */
 
 import {
-  getGuestAccessToken,
   unityConfig,
 } from '../../../scripts/utils.js';
 
@@ -14,11 +13,35 @@ export default class ServiceHandler {
     this.canvasArea = canvasArea;
   }
 
-  getHeaders() {
+  getGuestAccessToken() {
+    try {
+      return window.adobeIMS.getAccessToken();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  async getRefreshToken() {
+    try {
+      const { tokenInfo } = await window.adobeIMS.refreshToken();
+      return `Bearer ${tokenInfo.token}`;
+    } catch (e) {
+      return '';
+    }
+  }
+  
+  async getHeaders() {
+    let token = "";
+    let guestAccessToken = this.getGuestAccessToken();
+    if (!guestAccessToken || guestAccessToken.expire.valueOf() <= Date.now() + (5 * 60 * 1000)) {
+      token = await this.getRefreshToken();
+    } else {
+      token = `Bearer ${guestAccessToken.token}`;
+    }
     return {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: getGuestAccessToken(),
+        Authorization: token,
         'x-api-key': unityConfig.apiKey,
       },
     };
@@ -50,18 +73,20 @@ export default class ServiceHandler {
   }
 
   async postCallToService(api, options) {
+    const headers = await this.getHeaders();
     const postOpts = {
       method: 'POST',
-      ...this.getHeaders(),
+      ...headers,
       ...options,
     };
     return this.fetchFromService(api, postOpts);
   }
 
   async getCallToService(api, params) {
+    const headers = await this.getHeaders();
     const getOpts = {
       method: 'GET',
-      ...this.getHeaders(),
+      ...headers,
     };
     const queryString = new URLSearchParams(params).toString();
     const url = `${api}?${queryString}`;
