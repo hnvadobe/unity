@@ -32,12 +32,22 @@ export default class ServiceHandler {
   
   async getHeaders() {
     let token = "";
+    let refresh = false;
     let guestAccessToken = this.getGuestAccessToken();
     if (!guestAccessToken || guestAccessToken.expire.valueOf() <= Date.now() + (5 * 60 * 1000)) {
       token = await this.getRefreshToken();
+      refresh = true;
     } else {
       token = `Bearer ${guestAccessToken.token}`;
     }
+
+    if (!token) {
+      const error = new Error();
+      error.status = 401;
+      error.message = `Access Token is null. Refresh token call was executed: ${refresh}`
+      throw error;
+    }
+
     return {
       headers: {
         'Content-Type': 'application/json',

@@ -147,14 +147,30 @@ export default class ActionBinder {
     return files;
   }
 
-  async dispatchErrorToast(code, showError = true, status = null) {
+  getAccountType() {
+    try {
+      return window.adobeIMS.getAccountType();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  async dispatchErrorToast(code, status, info = null, showError = true) {
     if (showError) {
       const message = code in this.workflowCfg.errors
         ? this.workflowCfg.errors[code]
         : await getError(this.workflowCfg.enabledFeatures[0], code);
       this.block.dispatchEvent(new CustomEvent(
         unityConfig.errorToastEvent,
-        { detail: { code, message: message || 'Unable to process the request', ...(status !== null && { status }) } },
+        {
+          detail: {
+            code, 
+            message: `${message || 'Unable to process the request'}`, 
+            status,
+            info,
+            accountType: this.getAccountType(),
+          }
+        }
       ));
     }
   }
@@ -240,7 +256,7 @@ export default class ActionBinder {
       })
       .catch(async (e) => {
         await this.showSplashScreen();
-        await this.dispatchErrorToast('verb_upload_error_generic', e?.showError);
+        await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when redirecting to product.", e.showError);
       });
   }
 
@@ -330,7 +346,7 @@ export default class ActionBinder {
       );
       if (!finalizeJson || Object.keys(finalizeJson).length !== 0) {
         await this.showSplashScreen();
-        await this.dispatchErrorToast('verb_upload_error_generic');
+        await this.dispatchErrorToast('verb_upload_error_generic', 500, `Unexpected response from finalize call: ${finalizeJson}`, e.showError);
         this.operations = [];
         return false;
       }
@@ -373,7 +389,7 @@ export default class ActionBinder {
       });
     } catch (e) {
       await this.showSplashScreen();
-      await this.dispatchErrorToast('verb_upload_error_generic', e?.showError, e?.status);
+      await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when verifying content.", e.showError);
       this.operations = [];
       return false;
     }
@@ -431,17 +447,18 @@ export default class ActionBinder {
       await this.showSplashScreen();
       switch (e.status) {
         case 409:
-          await this.dispatchErrorToast('verb_upload_error_duplicate_asset', e.showError);
+          await this.dispatchErrorToast('verb_upload_error_duplicate_asset', e.status, null, e.showError);
           break;
         case 401:
-          await this.dispatchErrorToast(e.message === 'notentitled' ? 'verb_upload_error_no_storage_provision' : 'verb_upload_error_generic', e.showError);
+          if (e.message === 'notentitled') await this.dispatchErrorToast('verb_upload_error_no_storage_provision', e.status, null, e.showError);
+          else await this.dispatchErrorToast('verb_upload_error_generic', e.status, e.message, e.showError);
           break;
         case 403:
-          if (e.message === 'quotaexceeded') await this.dispatchErrorToast('verb_upload_error_max_quota_exceeded', e.showError);
-          else await this.dispatchErrorToast('verb_upload_error_no_storage_provision', e.showError);
+          if (e.message === 'quotaexceeded') await this.dispatchErrorToast('verb_upload_error_max_quota_exceeded', e.status, null, e.showError);
+          else await this.dispatchErrorToast('verb_upload_error_no_storage_provision', e.status, null, e.showError);
           break;
         default:
-          await this.dispatchErrorToast('verb_upload_error_generic', e.showError, e.status);
+          await this.dispatchErrorToast('verb_upload_error_generic', e.status, null, e.showError);
           break;
       }
       return;
