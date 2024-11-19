@@ -491,6 +491,24 @@
 }
 
 @media screen and (min-width: 600px) {
+  [dir='ltr'] .unity-enabled .interactive-area .unity-widget .unity-action-btn.show.continue-in-app-button {
+    flex-direction: row-reverse;
+  }
+
+  .unity-enabled .interactive-area .unity-action-area .unity-action-btn .continue-in-app-button {
+    border: 2px solid var(--color-accent);
+  }
+
+  .unity-enabled .interactive-area .unity-action-area .unity-action-btn:focus-visible,
+  .unity-enabled .interactive-area .unity-action-area .unity-action-btn.continue-in-app-button {
+    border: 2px solid var(--highlight-blue);
+    color: var(--color-white);
+  }
+
+  .continue-in-app-button {
+    background-color: var(--highlight-blue);
+  }
+
   .unity-enabled .gray-bg {
     background-color: #444;
     background-image: unset;
@@ -523,7 +541,7 @@
   }
   
   .unity-enabled .interactive-area .unity-widget {
-    max-width: 90%;
+    max-width: min(90%, 735px);
   }
 
   .unity-enabled .interactive-area .unity-widget {
@@ -717,12 +735,17 @@
     margin-right: auto;
     left: 0;
     right: 0;
-    max-width: unset;
+    max-width: min(95%, 850px);
   }
 
   .unity-enabled .interactive-area .unity-option-area {
     position: relative;
     left: 78px;
+  }
+
+  [dir="rtl"] .unity-enabled .interactive-area .unity-option-area {
+    position: relative;
+    right: 78px;
   }
 
   .unity-enabled .interactive-area > .widget-refresh-button.show,
@@ -748,10 +771,6 @@
 }
 
 @media screen and (min-width: 1400px) and (max-width: 1600px) {
-  .unity-enabled .interactive-area .unity-widget {
-    max-width: unset;
-  }
-
   .unity-enabled .widget-refresh-button {
     padding: 6px 11px;
   }
@@ -793,10 +812,6 @@
 }
 
 @media screen and (min-width: 1200px) and (max-width: 1400px) {
-  .unity-enabled .interactive-area .unity-widget {
-    max-width: 95%;
-  }
-
   .unity-enabled .interactive-area .unity-action-area {
     font-size: var(--type-body-m-size);
     line-height: var(--type-body-m-lh);

@@ -3,6 +3,7 @@ import {
   decorateDefaultLinkAnalytics,
   loadSvgs,
   priorityLoad,
+  defineDeviceByScreenSize,
 } from '../../../scripts/utils.js';
 
 export default class UnityWidget {
@@ -15,9 +16,8 @@ export default class UnityWidget {
   }
 
   async initWidget() {
-    const iWidget = createTag('div', { class: 'unity-widget' });
-    const unityaa = createTag('div', { class: 'unity-action-area' });
-    const unityoa = createTag('div', { class: 'unity-option-area' });
+    const [iWidget, unityaa, unityoa] = ['unity-widget', 'unity-action-area', 'unity-option-area']
+    .map((c) => createTag('div', { class: c }));
     iWidget.append(unityoa, unityaa);
     const refreshCfg = this.el.querySelector('.icon-product-icon');
     if (refreshCfg) await this.addRestartOption(refreshCfg.closest('li'), unityaa);
@@ -54,6 +54,8 @@ export default class UnityWidget {
     }
     if (txt) {
       const btnTxt = createTag('div', { class: 'btn-text' }, txt.split('\n')[0].trim());
+      const viewport = defineDeviceByScreenSize();
+      if (viewport === 'MOBILE') btnTxt.innerText = btnTxt.innerText.split(' ').toSpliced(1, 0, '\n').join(' ');
       if (swapOrder) actionBtn.prepend(btnTxt);
       else actionBtn.append(btnTxt);
     }

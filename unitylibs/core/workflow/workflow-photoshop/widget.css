@@ -96,7 +96,25 @@
   border: 3px solid var(--highlight-blue);
 }
 
+.btn-text {
+  max-width: 18ch;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 @media screen and (max-width: 600px) {
+  .unity-enabled .interactive-area .unity-action-btn .btn-text {
+    max-width: 18ch;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
+
   .unity-enabled .interactive-area .unity-option-area .changebg-options-tray {
     padding: 5px 5px 0;
     gap: 9px;
@@ -156,5 +174,9 @@
 
   .unity-enabled .interactive-area .unity-option-area .adjustment-options-tray .adjustment-label {
     font-weight: bold;
+  }
+
+  [dir="rtl"] .removebg-button {
+    order: 1;
   }
 }
