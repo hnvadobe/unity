@@ -65,10 +65,8 @@ export function defineDeviceByScreenSize() {
 }
 
 export function getLocale() {
-  const urlLocale = window.location.pathname.split('/')[1];
-  const { locales } = getConfig();
-  const locale = Object.entries(locales).find(([key]) => key === urlLocale);
-  return locale ? locale[1].ietf : 'en-US';
+  const currLocale = getConfig().locale?.prefix.replace('/', '')
+  return currLocale ? currLocale : 'us';
 }
 
 export async function loadSvg(src) {
