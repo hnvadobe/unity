@@ -124,6 +124,7 @@ class WfInitiator {
   async priorityLibFetch(renderWidget, workflowName) {
     const priorityList = [
       `${getUnityLibs()}/core/workflow/${workflowName}/action-binder.js`,
+      `${getUnityLibs()}/core/workflow/${this.workflowCfg.name}/target-config.json`,
     ];
     if (renderWidget) {
       priorityList.push(
@@ -143,11 +144,11 @@ class WfInitiator {
     this.workflowCfg = this.getWorkFlowInformation();
     this.workflowCfg.langRegion = langRegion;
     this.workflowCfg.langCode = langCode;
+    await this.priorityLibFetch(this.targetConfig.renderWidget, this.workflowCfg.name);
     [this.targetBlock, this.interactiveArea, this.targetConfig] = await this.getTarget();
     this.getEnabledFeatures();
     this.callbackMap = {};
     this.workflowCfg.targetCfg = this.targetConfig;
-    await this.priorityLibFetch(this.targetConfig.renderWidget, this.workflowCfg.name);
     if (this.targetConfig.renderWidget) {
       loadStyle(`${getUnityLibs()}/core/workflow/${this.workflowCfg.name}/widget.css`);
       const { default: UnityWidget } = await import(`${getUnityLibs()}/core/workflow/${this.workflowCfg.name}/widget.js`);

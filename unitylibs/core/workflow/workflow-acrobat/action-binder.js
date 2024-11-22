@@ -11,7 +11,6 @@ import {
   loadArea,
   loadImg,
 } from '../../../scripts/utils.js';
-import getError from '../../../scripts/errors.js';
 
 export default class ActionBinder {
   constructor(unityEl, workflowCfg, wfblock, canvasArea, actionMap = {}, limits = {}) {
@@ -127,7 +126,8 @@ export default class ActionBinder {
           break;
       }
     }
-    if (b === this.block) this.splashScreenEl = await this.loadSplashFragment();
+    //if (b === this.block) this.splashScreenEl = await this.loadSplashFragment();
+    if (b === this.block) await this.delayedSplashLoader();
   }
 
   extractFiles(e) {
@@ -159,7 +159,10 @@ export default class ActionBinder {
     if (showError) {
       const message = code in this.workflowCfg.errors
         ? this.workflowCfg.errors[code]
-        : await getError(this.workflowCfg.enabledFeatures[0], code);
+        : await (async () => {
+          const { getError } = await import('../../../scripts/errors.js');
+          return getError(this.workflowCfg.enabledFeatures[0], code);
+        })();
       this.block.dispatchEvent(new CustomEvent(
         unityConfig.errorToastEvent,
         {
@@ -309,7 +312,40 @@ export default class ActionBinder {
     const img = f.querySelector('img');
     if (img) loadImg(img);
     await loadArea(f);
+    this.splashScreenEl = f;
     return f;
+  }
+
+  async delayedSplashLoader() {
+    let eventListeners = ['mousemove', 'keydown', 'click', 'touchstart'];
+    const interactionHandler = async () => {
+      await this.loadSplashFragment();
+      cleanup(interactionHandler);
+    };
+
+    const timeoutHandler = async () => {
+      await this.loadSplashFragment();
+      cleanup(interactionHandler);
+    };
+
+    // Timeout to load after 8 seconds
+    let timeoutId = setTimeout(timeoutHandler, 8000);
+
+    const cleanup = (handler) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (eventListeners) {
+        eventListeners.forEach((event) =>
+          document.removeEventListener(event, handler)
+        );
+        eventListeners = null;
+      }
+    }
+    eventListeners.forEach((event) =>
+      document.addEventListener(event, interactionHandler, { once: true })
+    );
   }
 
   async handleSplashProgressBar() {
