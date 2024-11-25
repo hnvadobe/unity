@@ -160,7 +160,7 @@ export default class ActionBinder {
       const message = code in this.workflowCfg.errors
         ? this.workflowCfg.errors[code]
         : await (async () => {
-          const { getError } = await import('../../../scripts/errors.js');
+          const getError = (await import('../../../scripts/errors.js')).default;
           return getError(this.workflowCfg.enabledFeatures[0], code);
         })();
       this.block.dispatchEvent(new CustomEvent(
