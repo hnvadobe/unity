@@ -505,6 +505,10 @@
     color: var(--color-white);
   }
 
+  .unity-enabled .interactive-area.light .unity-action-area .unity-action-btn:focus-visible {
+    color: var(--color-black);
+  }
+
   .continue-in-app-button {
     background-color: var(--highlight-blue);
   }
