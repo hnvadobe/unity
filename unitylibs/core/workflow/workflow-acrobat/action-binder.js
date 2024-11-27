@@ -292,6 +292,7 @@ export default class ActionBinder {
 
   async cancelAcrobatOperation() {
     await this.showSplashScreen();
+    this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'cancel' } }));
     const e = new Error();
     e.message = 'Operation termination requested.';
     e.showError = false;
