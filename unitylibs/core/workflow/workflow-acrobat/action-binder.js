@@ -227,8 +227,8 @@ export default class ActionBinder {
 
   checkCookie = () => {
     const cookies = document.cookie.split(';').map((item) => item.trim());
-    const targets = [/^UTS_Uploading=/, /^UTS_Uploaded=/];
-    return targets.every((regex) => cookies.some((item) => regex.test(item)));
+    const target = /^UTS_Uploaded=/;
+    return cookies.some((item) => target.test(item));
   };
 
   waitForCookie = (timeout) => {
