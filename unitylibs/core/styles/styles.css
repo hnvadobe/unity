@@ -115,7 +115,7 @@
 }
 
 .unity-enabled .unity-action-btn .file-upload {
-  opacity: 0;
+  display: none;
   position: absolute;
   z-index: 2;
   height: 100%;
