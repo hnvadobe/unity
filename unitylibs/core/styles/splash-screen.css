@@ -124,6 +124,9 @@ body > .splash-loader {
   border: none;
   outline: none;
   box-shadow: none;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
 }
 
 @media screen and (min-width: 600px) {
