@@ -120,6 +120,12 @@ body > .splash-loader {
   height: auto;
 }
 
+.splash-loader .text video {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
 @media screen and (min-width: 600px) {
   .splash-loader .text .icon-area img,
   .splash-loader .text video {
