@@ -1,0 +1,27 @@
+{
+  "aside.text2image": {
+    "type": "text",
+    "selector": ".text",
+    "handler": "render",
+    "renderWidget": false,
+    "source": ".text .body-m",
+    "target": ".text .body-m",
+    "actionMap": {
+      ".input-class": [
+        {
+          "actionType": "autocomplete"
+        }
+      ],
+      ".surprise-btn-class": [
+        {
+          "actionType": "surprise"
+        }
+      ],
+      ".generate-btn-class": [
+        {
+          "actionType": "generate"
+        }
+      ]
+    }
+  }
+}

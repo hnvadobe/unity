@@ -251,6 +251,11 @@ class WfInitiator {
       'workflow-acrobat': {
         productName: 'acrobat',
         sfList: new Set(['fillsign']),
+      },
+      'workflow-genai': {
+        productName: 'Express',
+        sfList: new Set(['text2image']),
+        stList: new Set(['prompt', 'tip', 'legal', 'surpriseMe', 'generate']),
       }
     };
     [...this.el.classList].forEach((cn) => { if (cn.match('workflow-')) wfName = cn; });
@@ -262,6 +267,7 @@ class WfInitiator {
       enabledFeatures: [],
       featureCfg: [],
       errors: {},
+      supportedTexts: {},
     };
   }
 
@@ -277,6 +283,12 @@ class WfInitiator {
         this.workflowCfg.featureCfg.push(cf.closest('li'));
       } else if (fn.includes('error')) {
         this.workflowCfg.errors[fn] = cf.closest('li').innerText;
+      } else if (supportedTexts.has(fn)) {
+        if (!this.workflowCfg.supportedTexts[fn]) {
+          this.workflowCfg.supportedTexts[fn] = [cf.closest('li').innerText];
+        } else {
+          this.workflowCfg.supportedTexts[fn].push(cf.closest('li').innerText);
+        }
       }
     });
   }
