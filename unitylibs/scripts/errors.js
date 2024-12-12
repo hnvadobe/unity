@@ -25,19 +25,19 @@ async function loadErrorMessages(verb) {
   const { locale } = getConfig();
   const baseUrl = 'https://main--unity--adobecom.hlx.live';
   const errorFile = locale.prefix && locale.prefix !== '/'
-    ? `${baseUrl}/${locale.prefix}/configs/errors/${verb}.json`
+    ? `${baseUrl}${locale.prefix}/unity/configs/errors/${verb}.json`
     : `${baseUrl}/unity/configs/errors/${verb}.json`;
   const errorRes = await fetch(errorFile);
   if (!errorRes.ok) {
     throw new Error('Failed to fetch error messages.');
   }
   const errorJson = await errorRes.json();
-  window.uem = createErrorMap(errorJson?.data);
+  window.uem = createErrorMap(errorJson?.content?.data);
 }
 
 export default async function getError(verb, code) {
   try {
-    if (!window.uem) await loadErrorMessages(verb);
+    if (!window.uem || Object.keys(window.uem).length === 0) await loadErrorMessages(verb);
     return window.uem?.[code];
   } catch (e) {
     return '';
