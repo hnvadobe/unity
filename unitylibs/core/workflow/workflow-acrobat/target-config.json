@@ -9,7 +9,8 @@
     "limits": {
       "maxNumFiles": 1,
       "maxFileSize": 104857600,
-      "maxNumPages": 100
+      "maxNumPages": 100,
+      "allowedFileTypes": ["application/pdf"]
     },
     "showSplashScreen": true,
     "splashScreenConfig": {
@@ -28,6 +29,51 @@
       "#file-upload": [
         {
           "actionType": "fillsign"
+        },
+        {
+          "actionType": "continueInApp"
+        }
+      ]
+    }
+  },
+  "verb-widget.compress": {
+    "type": "pdf",
+    "selector": ".verb-wrapper",
+    "handler": "render",
+    "renderWidget": false,
+    "source": ".verb-wrapper .verb-container",
+    "target": ".verb-wrapper .verb-container",
+    "limits": {
+      "maxFileSize": 2147483648,
+      "allowedFileTypes": [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "image/jpeg",
+        "image/png"
+      ]
+    },
+    "showSplashScreen": true,
+    "splashScreenConfig": {
+      "fragmentLink": "/dc-shared/fragments/shared-fragments/frictionless/splash-page/splashscreen",
+      "splashScreenParent": "body"
+    },
+    "actionMap": {
+      ".verb-wrapper": [
+        {
+          "actionType": "compress"
+        },
+        {
+          "actionType": "continueInApp"
+        }
+      ],
+      "#file-upload": [
+        {
+          "actionType": "compress"
         },
         {
           "actionType": "continueInApp"

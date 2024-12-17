@@ -460,7 +460,7 @@ export default class ActionBinder {
   }
 
   async singleFileUpload(file, eventName) {
-    if (file.type !== 'application/pdf') {
+    if (!this.limits.allowedFileTypes.includes(file.type)) {
       await this.dispatchErrorToast('verb_upload_error_unsupported_type');
       return;
     }
