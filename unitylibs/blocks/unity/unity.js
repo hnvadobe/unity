@@ -17,6 +17,7 @@ function getUnityLibs(prodLibs, project = 'unity') {
 }
 
 export default async function init(el) {
+  console.log('Hello');
   const projectName = 'unity';
   const unitylibs = getUnityLibs('/unitylibs', projectName);
   const stylePromise = new Promise((resolve) => {
