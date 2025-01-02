@@ -250,7 +250,7 @@ class WfInitiator {
       },
       'workflow-acrobat': {
         productName: 'acrobat',
-        sfList: new Set(['fillsign']),
+        sfList: new Set(['fillsign', 'compress-pdf']),
       }
     };
     [...this.el.classList].forEach((cn) => { if (cn.match('workflow-')) wfName = cn; });
@@ -271,7 +271,7 @@ class WfInitiator {
     configuredFeatures.forEach((cf) => {
       const cfName = [...cf.classList].find((cn) => cn.match('icon-'));
       if (!cfName) return;
-      const fn = cfName.split('-')[1];
+      const fn = cfName.trim().replace('icon-','');
       if (supportedFeatures.has(fn)) {
         this.workflowCfg.enabledFeatures.push(fn);
         this.workflowCfg.featureCfg.push(cf.closest('li'));
