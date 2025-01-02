@@ -36,7 +36,7 @@
       ]
     }
   },
-  "verb-widget.compress": {
+  "verb-widget.compress-pdf": {
     "type": "pdf",
     "selector": ".verb-wrapper",
     "handler": "render",

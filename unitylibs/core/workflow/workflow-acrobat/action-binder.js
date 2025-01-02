@@ -25,6 +25,8 @@ export default class ActionBinder {
     this.serviceHandler = null;
     this.splashScreenEl = null;
     this.promiseStack = [];
+    this.redirectUrl = '';
+    this.redirectWithoutUpload = false;
     this.LOADER_DELAY = 800;
     this.LOADER_INCREMENT = 30;
     this.LOADER_LIMIT = 95;
@@ -245,49 +247,20 @@ export default class ActionBinder {
     });
   };
 
-
   async continueInApp() {
-    if (!this.operations.length) return;
-    const { assetId, filename, filesize, filetype } = this.operations[this.operations.length - 1];
-    const cOpts = {
-      assetId,
-      targetProduct: this.workflowCfg.productName,
-      payload: {
-        languageRegion: this.workflowCfg.langRegion,
-        languageCode: this.workflowCfg.langCode,
-        verb: this.workflowCfg.enabledFeatures[0],
-        assetMetadata: {
-          [assetId]: {
-            name: filename,
-            size: filesize,
-            type: filetype,
-          },
-        },
-      },
-    };
-    this.promiseStack.push(
-      this.serviceHandler.postCallToService(
-        this.acrobatApiConfig.connectorApiEndPoint,
-        { body: JSON.stringify(cOpts) },
-      ),
-    );
-    await Promise.all(this.promiseStack)
-      .then(async (resArr) => {
-        const response = resArr[resArr.length - 1];
-        if (!response?.url) throw new Error('Error connecting to App');
-        this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'redirect to product' } }));
-        await this.waitForCookie(2000);
-        this.updateProgressBar(this.splashScreenEl, 100);
-        if (!this.checkCookie()) {
-          await this.dispatchErrorToast('verb_cookie_not_set', 200, "Not all cookies found, redirecting anyway", true);
-          await new Promise(r => setTimeout(r, 500));
-        }
-        window.location.href = response.url;
-      })
-      .catch(async (e) => {
-        await this.showSplashScreen();
-        await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when redirecting to product.", e.showError);
-      });
+    if (!(this.operations.length || this.redirectWithoutUpload)) return;
+    try {
+      await this.waitForCookie(2000);
+      this.updateProgressBar(this.splashScreenEl, 100);
+      if (!this.checkCookie()) {
+        await this.dispatchErrorToast('verb_cookie_not_set', 200, "Not all cookies found, redirecting anyway", true);
+        await new Promise(r => setTimeout(r, 500));
+      }
+      window.location.href = this.redirectUrl;
+    } catch (e) {
+      await this.showSplashScreen();
+      await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when redirecting to product.", e.showError);
+    }
   }
 
   async cancelAcrobatOperation() {
@@ -414,6 +387,17 @@ export default class ActionBinder {
         this.operations = [];
         return false;
       }
+    } catch (e) {
+      await this.showSplashScreen();
+      await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when verifying content.", e.showError);
+      this.operations = [];
+      return false;
+    }
+    return true;
+  }
+
+  async isMaxPageLimitExceeded(assetData) {
+    try {
       const intervalDuration = 500;
       const totalDuration = 5000;
       let metadata = {};
@@ -425,10 +409,10 @@ export default class ActionBinder {
           if (metadata.numPages > this.limits.maxNumPages) {
             await this.showSplashScreen();
             await this.dispatchErrorToast('verb_upload_error_max_page_count');
-            resolve(false);
+            resolve(true);
             return;
           }
-          resolve(true);
+          resolve(false);
         }
         intervalId = setInterval(async () => {
           if (requestInProgress) return;
@@ -447,19 +431,61 @@ export default class ActionBinder {
         }, intervalDuration);
         const timeoutId = setTimeout(async () => {
           clearInterval(intervalId);
-          if (!metadataExists) resolve(true);
+          if (!metadataExists) resolve(false);
           else await handleMetadata();
         }, totalDuration);
       });
     } catch (e) {
       await this.showSplashScreen();
-      await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when verifying content.", e.showError);
+      await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when verifying PDF page count.", e.showError);
       this.operations = [];
       return false;
     }
   }
 
+  async handleValidations(assetData) {
+    let validated = true;
+    for (const limit of Object.keys(this.limits)) {
+      switch (limit) {
+        case 'maxNumPages':
+          const maxPageLimitExceeded = await this.isMaxPageLimitExceeded(assetData);
+          if (maxPageLimitExceeded) validated = false;
+          break;
+        default:
+          break;
+      }
+    }
+    if (!validated) this.operations = [];
+    return validated;
+  }
+
+  async getRedirectUrl(cOpts) {
+    this.promiseStack.push(
+      this.serviceHandler.postCallToService(
+        this.acrobatApiConfig.connectorApiEndPoint,
+        { body: JSON.stringify(cOpts) },
+      ),
+    );
+    await Promise.all(this.promiseStack)
+      .then(async (resArr) => {
+        const response = resArr[resArr.length - 1];
+        if (!response?.url) throw new Error('Error connecting to App');
+        this.redirectUrl = response.url;
+      })
+      .catch(async (e) => {
+        await this.showSplashScreen();
+        await this.dispatchErrorToast('verb_upload_error_generic', 500, "Exception thrown when retrieving redirect URL.", e.showError);
+      });
+  }
+
+  isNonPdf(files) {
+    return files.some((file) => file.type !== 'application/pdf');
+  }
+
   async singleFileUpload(file, eventName) {
+    const accountType = this.getAccountType();
+    let cOpts = {};
+    const isNonPdf = this.isNonPdf([file]);
     if (!this.limits.allowedFileTypes.includes(file.type)) {
       await this.dispatchErrorToast('verb_upload_error_unsupported_type');
       return;
@@ -498,17 +524,47 @@ export default class ActionBinder {
         this.acrobatApiConfig.acrobatEndpoint.createAsset,
         { body: JSON.stringify(data) },
       );
+      if (accountType === 'guest' && isNonPdf) {
+        cOpts = {
+          targetProduct: this.workflowCfg.productName,
+          payload: {
+            languageRegion: this.workflowCfg.langRegion,
+            languageCode: this.workflowCfg.langCode,
+            verb: this.workflowCfg.enabledFeatures[0],
+            feedback: 'nonpdf',
+          },
+        };
+        await this.getRedirectUrl(cOpts);
+        if (!this.redirectUrl) return;
+        this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'redirectUrl', data: this.redirectUrl } }));
+        this.redirectWithoutUpload = true;
+        return;
+      }
+      cOpts = {
+        assetId: assetData.id,
+        targetProduct: this.workflowCfg.productName,
+        payload: {
+          languageRegion: this.workflowCfg.langRegion,
+          languageCode: this.workflowCfg.langCode,
+          verb: this.workflowCfg.enabledFeatures[0],
+          assetMetadata: {
+            [assetData.id]: {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+            },
+          },
+        },
+      };
+      await this.getRedirectUrl(cOpts);
+      if (!this.redirectUrl) return;
+      this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'redirectUrl', data: this.redirectUrl } }));
       this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'uploading', data: assetData } }));
       await this.chunkPdf(assetData, blobData, file.type);
-      const operationItem = {
-        assetId: assetData.id,
-        filename: file.name,
-        filesize: file.size,
-        filetype: file.type,
-      };
-      this.operations.push(operationItem);
+      this.operations.push(assetData.id);
     } catch (e) {
       await this.showSplashScreen();
+      this.operations = [];
       switch (e.status) {
         case 409:
           await this.dispatchErrorToast('verb_upload_error_duplicate_asset', e.status, null, e.showError);
@@ -528,10 +584,9 @@ export default class ActionBinder {
       return;
     }
     const verified = await this.verifyContent(assetData);
-    if (!verified) {
-      this.operations = [];
-      return;
-    }
+    if (!verified) return;
+    const validated = await this.handleValidations(assetData);
+    if (!validated) return;
     this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'uploaded' } }));
   }
 }
