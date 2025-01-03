@@ -261,7 +261,7 @@ export default class ActionBinder {
   };
 
   async continueInApp() {
-    if (!(this.operations.length || this.redirectWithoutUpload)) return;
+    if (!this.redirectUrl || !(this.operations.length || this.redirectWithoutUpload)) return;
     try {
       await this.waitForCookie(2000);
       this.updateProgressBar(this.splashScreenEl, 100);
@@ -278,6 +278,7 @@ export default class ActionBinder {
 
   async cancelAcrobatOperation() {
     await this.showSplashScreen();
+    this.redirectUrl = '';
     this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'cancel' } }));
     const e = new Error();
     e.message = 'Operation termination requested.';
@@ -611,6 +612,7 @@ export default class ActionBinder {
       ),
     );
     this.block.dispatchEvent(new CustomEvent(unityConfig.trackAnalyticsEvent, { detail: { event: 'multifile', data: fileCount } }));
+    await this.showSplashScreen(true);
     const cOpts = {
       targetProduct: this.workflowCfg.productName,
       payload: {
@@ -621,7 +623,10 @@ export default class ActionBinder {
       },
     };
     await this.getRedirectUrl(cOpts);
-    if (!this.redirectUrl) return;
-    window.location.href = this.redirectUrl;
+    setTimeout(() => {
+      this.updateProgressBar(this.splashScreenEl, 100);
+      if (!this.redirectUrl) return;
+      window.location.href = this.redirectUrl;
+    }, 5000);
   }
 }
