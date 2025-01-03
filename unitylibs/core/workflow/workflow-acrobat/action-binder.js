@@ -568,6 +568,7 @@ export default class ActionBinder {
               type: file.type,
             },
           },
+          ...(isNonPdf ? { feedback: 'nonpdf' } : {}),
         },
       };
       await this.getRedirectUrl(cOpts);
