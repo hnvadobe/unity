@@ -133,7 +133,7 @@ body > .splash-loader {
   .splash-loader .text .icon-area img,
   .splash-loader .text video {
     width: 286px;
-    height: auto;
+    height: 230px;
   }
 
   .splash-loader h1,
@@ -144,6 +144,23 @@ body > .splash-loader {
     font-size: var(--type-heading-xl-size);
     line-height: var(--type-heading-xl-lh);
     font-weight: 700;
+  }
+  
+  .splash-loader .text h1:first-of-type,
+  .splash-loader .text h2:first-of-type,
+  .splash-loader .text h3:first-of-type,
+  .splash-loader .text h4:first-of-type,
+  .splash-loader .text h5:first-of-type {
+    font-size: var(--type-heading-l-size);
+    line-height: var(--type-heading-l-lh);
+  }
+
+  .splash-loader .text-block [class^="heading"]:first-of-type {
+    margin: 0 0 var(--spacing-l) 0;
+  }
+  
+  .splash-loader .text-block p.icon-area {
+    margin-block: var(--spacing-s);
   }
 }
 
