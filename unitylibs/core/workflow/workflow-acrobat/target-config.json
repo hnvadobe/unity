@@ -10,7 +10,8 @@
       "maxNumFiles": 1,
       "maxFileSize": 104857600,
       "maxNumPages": 100,
-      "allowedFileTypes": ["application/pdf"]
+      "allowedFileTypes": ["application/pdf"],
+      "batchSize": 10
     },
     "showSplashScreen": true,
     "splashScreenConfig": {
@@ -55,7 +56,8 @@
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "image/jpeg",
         "image/png"
-      ]
+      ],
+      "batchSize": 10
     },
     "showSplashScreen": true,
     "splashScreenConfig": {
