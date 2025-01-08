@@ -90,7 +90,6 @@ export default class ActionBinder {
           await this.compress(files, eventName);
           break;    
         case value.actionType === 'continueInApp':
-          this.LOADER_LIMIT = 100;
           await this.continueInApp();
           break;
         case value.actionType === 'interrupt':
@@ -271,6 +270,7 @@ export default class ActionBinder {
 
   async continueInApp() {
     if (!this.redirectUrl || !(this.operations.length || this.redirectWithoutUpload)) return;
+    this.LOADER_LIMIT = 100;
     try {
       await this.waitForCookie(2000);
       this.updateProgressBar(this.splashScreenEl, 100);
@@ -634,9 +634,9 @@ export default class ActionBinder {
     };
     await this.getRedirectUrl(cOpts);
     setTimeout(() => {
-      this.updateProgressBar(this.splashScreenEl, 100);
+      this.updateProgressBar(this.splashScreenEl, 95);
       if (!this.redirectUrl) return;
       window.location.href = this.redirectUrl;
-    }, 5000);
+    }, 2500);
   }
 }
