@@ -217,6 +217,28 @@ export function createIntersectionObserver({ el, callback, cfg, options = {} }) 
   return io;
 }
 
+export function delay(durationMs=1000) {
+  return new Promise((resolve) => {
+      setTimeout(() => {
+          resolve('Resolved after 1 second');
+      }, durationMs);
+  });
+}
+
+export function updateQueryParameter(url, paramName='format', oldValue='webply', newValue='jpeg') {
+  try {
+      const urlObj = new URL(url);
+      const params = urlObj.searchParams;
+      if (params.get(paramName) === oldValue) {
+          params.set(paramName, newValue);
+      }
+
+      return urlObj.toString();
+  } catch (error) {
+      return null;
+  }
+}
+
 export const unityConfig = (() => {
   const { host } = window.location;
   const commoncfg = {

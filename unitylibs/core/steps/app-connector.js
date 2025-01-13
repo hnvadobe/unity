@@ -2,14 +2,19 @@ import { createActionBtn, createIntersectionObserver, getHeaders, getLocale } fr
 
 function getPreludeData(cfg) {
   const dataObj = {
-    assetId: cfg.preludeState.assetId,
     targetProduct: 'Photoshop',
     payload: {
       locale: getLocale(),
-      finalAssetId: cfg.preludeState.finalAssetId,
       operations: [...cfg.preludeState.operations],
     },
   };
+  if(cfg.presentState.cache) {
+    dataObj.href = cfg.preludeState.href
+    dataObj.payload.finalAssetUrl = cfg.preludeState.finalAssetUrl;
+  } else {
+    dataObj.assetId = cfg.preludeState.assetId
+    dataObj.payload.finalAssetId = cfg.preludeState.finalAssetId;
+  }
   if (cfg.presentState?.adjustments && cfg.presentState?.adjustments.modified) {
     const imageAdjustment = {
       name: 'imageAdjustment',
