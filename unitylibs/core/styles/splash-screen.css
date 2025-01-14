@@ -36,7 +36,7 @@ body > .splash-loader {
 }
 
 .splash-loader .text .con-button {
-  display: none;
+  display: flex;
 }
 
 .progress-holder {
@@ -70,8 +70,7 @@ body > .splash-loader {
 }
 
 .progress-holder .spectrum-ProgressBar .spectrum-ProgressBar-percentage {
-		align-self: flex-start;
-		margin-inline-start: 5px;
+		align-self: center;
 }
 
 .progress-holder .spectrum-ProgressBar .spectrum-ProgressBar-track {
@@ -90,9 +89,7 @@ body > .splash-loader {
 }
 
 .progress-holder .spectrum-ProgressBar--sideLabel {
-	display: inline-flex;
-	flex-flow: row;
-	justify-content: space-between;
+	flex-flow: column;
 }
 
 .progress-holder .spectrum-ProgressBar--sideLabel .spectrum-ProgressBar-track {
@@ -107,8 +104,6 @@ body > .splash-loader {
 
 .progress-holder .spectrum-ProgressBar--sideLabel .spectrum-ProgressBar-percentage {
   order: 3;
-  text-align: end;
-  margin-inline-start: 12px;
   font-size: var(--type-body-l-size);
   line-height: var(--type-body-l-lh);
   font-weight: 700;
@@ -116,8 +111,8 @@ body > .splash-loader {
 
 .splash-loader .text .icon-area img,
 .splash-loader .text video {
-  width: 104px;
-  height: auto;
+  width: 157px;
+  height: 127px;
 }
 
 .splash-loader .text video {
@@ -129,13 +124,24 @@ body > .splash-loader {
   -moz-backface-visibility: hidden;
 }
 
-@media screen and (min-width: 600px) {
-  .splash-loader .text .icon-area img,
-  .splash-loader .text video {
-    width: 286px;
-    height: 230px;
-  }
+.splash-loader .text-block [class^="heading"]:first-of-type {
+  margin: 0 0 var(--spacing-l) 0;
+}
 
+.splash-loader .text-block p.icon-area {
+  margin-block: var(--spacing-s);
+}
+
+.splash-loader .text h1:first-of-type,
+.splash-loader .text h2:first-of-type,
+.splash-loader .text h3:first-of-type,
+.splash-loader .text h4:first-of-type,
+.splash-loader .text h5:first-of-type {
+  font-size: var(--type-heading-m-size);
+  line-height: var(--type-heading-m-lh);
+}
+
+@media screen and (min-width: 600px) {
   .splash-loader h1,
   .splash-loader h2,
   .splash-loader h3,
@@ -154,23 +160,32 @@ body > .splash-loader {
     font-size: var(--type-heading-l-size);
     line-height: var(--type-heading-l-lh);
   }
-
-  .splash-loader .text-block [class^="heading"]:first-of-type {
-    margin: 0 0 var(--spacing-l) 0;
-  }
-  
-  .splash-loader .text-block p.icon-area {
-    margin-block: var(--spacing-s);
-  }
 }
 
 @media screen and (min-width: 1000px) {
-  .splash-loader .text .con-button {
-    display: flex;
+	.splash-loader .text .icon-area img,
+  .splash-loader .text video {
+    width: 286px;
+    height: 230px;
+  }
+
+	.progress-holder .spectrum-ProgressBar--sideLabel .spectrum-ProgressBar-percentage {
+    text-align: end;
+    margin-inline-start: 12px;
+  }
+
+	.progress-holder .spectrum-ProgressBar .spectrum-ProgressBar-percentage {
+		align-self: flex-start;
+		margin-inline-start: 5px;
+  }
+
+  .progress-holder .spectrum-ProgressBar--sideLabel {
+    display: inline-flex;
+    flex-flow: row;
+    justify-content: space-between;
   }
 
   .progress-holder {
     min-width: 400px;
   }
 }
-
