@@ -273,11 +273,11 @@ export default class ActionBinder {
     this.LOADER_LIMIT = 100;
     try {
       await this.waitForCookie(2000);
-      this.updateProgressBar(this.splashScreenEl, 100);
       if (!this.checkCookie()) {
         await this.dispatchErrorToast('verb_cookie_not_set', 200, 'Not all cookies found, redirecting anyway', true);
         await new Promise(r => setTimeout(r, 500));
       }
+      this.updateProgressBar(this.splashScreenEl, 100);
       window.location.href = this.redirectUrl;
     } catch (e) {
       await this.showSplashScreen();
