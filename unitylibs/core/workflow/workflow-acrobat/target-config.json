@@ -70,7 +70,7 @@
         "message/rfc822",
         "text/plain"
       ],
-      "batchSize": 10
+      "batchSize": 6
     },
     "showSplashScreen": true,
     "splashScreenConfig": {
