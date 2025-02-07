@@ -12,6 +12,10 @@
   display: none !important;
 }
 
+.unity-sprite-container {
+  display: none !important;
+}
+
 .unity-enabled .interactive-area .unity-widget.decorating {
   display: none;
 }
@@ -169,6 +173,10 @@
   z-index: 2;
 }
 
+.unity-enabled .interactive-area .alert-holder.show {
+  display: flex;
+}
+
 .unity-enabled .interactive-area .alert-holder .alert-toast {
   background: var(--alert-red);
   border-radius: 10px;
@@ -184,24 +192,25 @@
 .unity-enabled .interactive-area .alert-holder .alert-toast .alert-content {
   display: flex;
   flex-direction: row;
+  align-items: center;
 }
 
 .unity-enabled .interactive-area .alert-holder .alert-toast .alert-content .alert-icon {
   display: flex;
   width: auto;
-  align-items: flex-start;
+  align-items: center;
   align-self: stretch;
 }
 
 .unity-enabled .interactive-area .alert-holder .alert-toast .alert-content .alert-icon svg {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   height: 20px;
   min-height: 20px;
   max-height: 20px;
-  width: auto;
-  min-width: auto;
-  max-width: auto;
+  width: 20px;
+  min-width: 20px;
+  max-width: 20px;
   padding: 18px 0 18px 16px;
   bottom: 18px;
 }
@@ -591,7 +600,8 @@
   }
 
   .aside.split.unity-enabled .widget-product-icon img,
-  .unity-enabled .interactive-area .widget-product-icon img {
+  .unity-enabled .interactive-area .widget-product-icon img,
+  .unity-enabled .interactive-area .widget-product-icon svg {
     height: 38.5px;
     min-height: 38.5px;
     max-height: 38.5px;
