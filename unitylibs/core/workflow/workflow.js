@@ -121,18 +121,32 @@ class WfInitiator {
     this.actionMap = {};
   }
 
-  async priorityLibFetch(renderWidget, workflowName) {
-    const priorityList = [
-      `${getUnityLibs()}/core/workflow/${workflowName}/action-binder.js`,
-      `${getUnityLibs()}/core/workflow/${this.workflowCfg.name}/target-config.json`,
+  async priorityLibFetch(workflowName) {
+    const baseWfPath = `${getUnityLibs()}/core/workflow/${workflowName}`;
+    const sharedWfRes = [
+      `${baseWfPath}/sprite.svg`,
+      `${baseWfPath}/widget.css`,
+      `${baseWfPath}/widget.js`,
     ];
-    if (renderWidget) {
-      priorityList.push(
-        `${getUnityLibs()}/core/workflow/${workflowName}/widget.css`,
-        `${getUnityLibs()}/core/workflow/${workflowName}/widget.js`,
-      );
-    }
-    await priorityLoad(priorityList);
+    const workflowRes = {
+      'workflow-photoshop': [
+        ...sharedWfRes,
+        `${getUnityLibs()}/core/features/progress-circle/progress-circle.css`,
+      ],
+      'workflow-ai': sharedWfRes,
+    };
+    const commonResources = [
+      `${baseWfPath}/target-config.json`,
+      `${baseWfPath}/action-binder.js`,
+    ];
+    const wfRes = workflowRes[workflowName] || [];
+    const priorityList = [...commonResources, ...wfRes];
+    const pfr = await priorityLoad(priorityList);
+
+    return {
+      targetConfigCallRes: pfr[0],
+      spriteCallRes: pfr.length > 2 ? pfr[2] : null,
+    };
   }
 
   async init(el, project = 'unity', unityLibs = '/unitylibs', langRegion, langCode) {
