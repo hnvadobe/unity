@@ -1,84 +1,29 @@
-/* eslint-disable max-classes-per-file */
 /* eslint-disable eqeqeq */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable no-restricted-syntax */
 
 import {
-  getGuestAccessToken,
   unityConfig,
+  getUnityLibs,
   loadImg,
+  loadStyle,
   createTag,
+  loadSvgs,
   getLocale,
-  delay,
-  getLibs,
 } from '../../../scripts/utils.js';
-
-const CONTAIN_OBJECT = 'contain-object';
-const MOBILE_GRAY_BG = 'mobile-gray-bg';
-const GRAY_BG = 'gray-bg';
-const FULL_HEIGHT = 'full-height';
-const IMG_LANDSCAPE = 'img-landscape';
-const IMG_PORTRAIT = 'img-portrait';
-const IMG_REMOVE_BG = 'img-removebg';
-
-class ServiceHandler {
-  constructor(renderWidget = false, canvasArea = null, unityEl = null) {
-    this.renderWidget = renderWidget;
-    this.canvasArea = canvasArea;
-    this.unityEl = unityEl;
-  }
-
-  getHeaders() {
-    return {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: getGuestAccessToken(),
-        'x-api-key': unityConfig.apiKey,
-      },
-    };
-  }
-
-  async postCallToService(api, options, errorCallbackOptions = {}, failOnError = true) {
-    const postOpts = {
-      method: 'POST',
-      ...this.getHeaders(),
-      ...options,
-    };
-    try {
-      const response = await fetch(api, postOpts);
-      if (failOnError && response.status != 200) throw Error('Operation failed');
-      if (!failOnError) return response;
-      const resJson = await response.json();
-      return resJson;
-    } catch (err) {
-      if (!this.renderWidget) return {};
-      this.showErrorToast(errorCallbackOptions);
-      throw Error('Operation failed');
-    }
-  }
-
-  showErrorToast(errorCallbackOptions) {
-    this.canvasArea?.querySelector('.progress-circle')?.classList.remove('show');
-    if (!errorCallbackOptions.errorToastEl) return;
-    const msg = this.unityEl.querySelector(errorCallbackOptions.errorType)?.nextSibling.textContent;
-    errorCallbackOptions.errorToastEl.querySelector('.alert-text p').innerText = msg;
-    errorCallbackOptions.errorToastEl.classList.add('show');
-  }
-}
 
 export default class ActionBinder {
   constructor(unityEl, workflowCfg, wfblock, canvasArea, actionMap = {}, limits = {}) {
-    this.unityEl = unityEl;
     this.workflowCfg = workflowCfg;
     this.block = wfblock;
     this.actionMap = actionMap;
     this.canvasArea = canvasArea;
     this.operations = [];
+    this.progressCircleEl = null;
     this.errorToastEl = null;
     this.psApiConfig = this.getPsApiConfig();
     this.serviceHandler = null;
-    this.renderCachedExperience = true;
   }
 
   getPsApiConfig() {
@@ -116,21 +61,27 @@ export default class ActionBinder {
     item.style[propertyName] = propertyValue;
   }
 
-  dispatchClickEvent(params, e) {
-    const a = e.target.nodeName == 'A' ? e.target : e.target.closest('a');
-    a.querySelector(params.target).click();
-  }
-
-  async executeAction(values, e) {
+  async psActionMaps(values, e) {
+    const { default: ServiceHandler } = await import(`${getUnityLibs()}/core/workflow/${this.workflowCfg.name}/service-handler.js`);
+    this.serviceHandler = new ServiceHandler(
+      this.workflowCfg.targetCfg.renderWidget,
+      this.canvasArea,
+    );
+    if (this.workflowCfg.targetCfg.renderWidget) {
+      const svgs = this.canvasArea.querySelectorAll('.unity-widget img[src*=".svg"');
+      await loadSvgs(svgs);
+      if (!this.progressCircleEl) {
+        this.progressCircleEl = await this.createSpectrumProgress();
+        this.canvasArea.append(this.progressCircleEl);
+      }
+    }
     for (const value of values) {
       switch (true) {
         case value.actionType == 'hide':
           value.targets.forEach((t) => this.hideElement(t, this.block));
           break;
         case value.actionType == 'setCssStyle':
-          value.targets.forEach((t) => {
-            this.styleElement(t, value.propertyName, value.propertyValue);
-          });
+          value.targets.forEach((t) => { this.styleElement(t, value.propertyName, value.propertyValue) });
           break;
         case value.actionType == 'show':
           value.targets.forEach((t) => this.showElement(t, this.block));
@@ -148,41 +99,26 @@ export default class ActionBinder {
           this.changeAdjustments(e.target.value, value);
           break;
         case value.actionType == 'upload':
-          this.renderCachedExperience = false;
-          await this.userImgUpload(value, e);
+          this.userImgUpload(value, e);
           break;
         case value.actionType == 'continueInApp':
-          await this.continueInApp(value, e);
-          break;
-        case value.actionType == 'dispatchClickEvent':
-          this.dispatchClickEvent(value, e);
+          this.continueInApp(value, e);
           break;
         case value.actionType == 'refresh':
-          this.renderCachedExperience = true;
           value.target.src = value.sourceSrc;
           this.operations = [];
-          this.resetClasses(value.target, this.canvasArea);
           break;
         default:
           break;
       }
     }
-  }
-
-  async psActionMaps(values, e) {
-    if (this.workflowCfg.targetCfg.renderWidget) {
-      if (!this.progressCircleEl) this.progressCircleEl = this.createSpectrumProgress();
-      if (!this.errorToastEl) this.errorToastEl = await this.createErrorToast();
+    if (this.workflowCfg.targetCfg.renderWidget && this.operations.length) {
+      this.canvasArea.querySelector('.widget-product-icon')?.classList.remove('show');
+      [...this.canvasArea.querySelectorAll('.widget-refresh-button')].forEach((w) => w.classList.add('show'));
     }
-    await this.executeAction(values, e);
   }
 
-  async initActionListeners() {
-    this.serviceHandler = new ServiceHandler(
-      this.workflowCfg.targetCfg.renderWidget,
-      this.canvasArea,
-      this.unityEl,
-    );
+  initActionListeners() {
     for (const [key, values] of Object.entries(this.actionMap)) {
       const el = this.block.querySelector(key);
       if (!el) return;
@@ -193,16 +129,6 @@ export default class ActionBinder {
             e.preventDefault();
             await this.psActionMaps(values, e);
           });
-          if (values.find((v) => v.actionType == 'refresh')) {
-            const observer = new IntersectionObserver((entries) => {
-              entries.forEach(async (entry) => {
-                if (!entry.isIntersecting) {
-                  await this.psActionMaps(values);
-                }
-              });
-            });
-            observer.observe(this.canvasArea);
-          }
           break;
         case el.nodeName === 'INPUT':
           el.addEventListener('change', async (e) => {
@@ -250,14 +176,14 @@ export default class ActionBinder {
   async scanImgForSafety(assetId) {
     const assetData = { assetId, targetProduct: this.workflowCfg.productName };
     const optionsBody = { body: JSON.stringify(assetData) };
-    const res = await this.serviceHandler.postCallToService(
-      this.psApiConfig.psEndPoint.acmpCheck,
-      optionsBody,
-      {},
-      false,
-    );
-    if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
-      setTimeout(() => { this.scanImgForSafety(); }, 1000);
+    try {
+      this.serviceHandler.postCallToService(
+        this.psApiConfig.psEndPoint.acmpCheck,
+        optionsBody,
+      );
+    }
+    catch(e) {
+      // Finalize Api call
     }
   }
 
@@ -265,10 +191,6 @@ export default class ActionBinder {
     const resJson = await this.serviceHandler.postCallToService(
       this.psApiConfig.psEndPoint.assetUpload,
       {},
-      {
-        errorToastEl: this.errorToastEl,
-        errorType: '.icon-error-request',
-      },
     );
     const { id, href } = resJson;
     const blobData = await this.getImageBlobData(imgUrl);
@@ -279,178 +201,85 @@ export default class ActionBinder {
     return assetId;
   }
 
-  resetClasses(img, targetEl) {
-    [
-      CONTAIN_OBJECT,
-      IMG_LANDSCAPE,
-      IMG_PORTRAIT,
-      IMG_REMOVE_BG,
-      MOBILE_GRAY_BG,
-      FULL_HEIGHT,
-    ].forEach((c) => {
-      img.classList.remove(c);
-    });
-    targetEl.classList.remove(GRAY_BG);
-  }
-
-  async userImgUpload(params, e) {
+  userImgUpload(params, e) {
     this.canvasArea.querySelector('img').style.filter = '';
     this.operations = [];
     const file = e.target.files[0];
     if (!file) return;
-    if (['image/jpeg', 'image/png', 'image/jpg'].indexOf(file.type) == -1) {
-      this.serviceHandler.showErrorToast({ errorToastEl: this.errorToastEl, errorType: '.icon-error-filetype' });
-      throw new Error('File format not supported!!');
+    if (file.size > 400000000) {
+      // unityEl.dispatchEvent(new CustomEvent(errorToastEvent, { detail: { msg: eft } }));
+      // return;
     }
-    if (file.size > 40000000) {
-      this.serviceHandler.showErrorToast({ errorToastEl: this.errorToastEl, errorType: '.icon-error-filesize' });
-      throw new Error('File too large!!');
-    }
-    const operationItem = {
-      operationType: 'upload',
-      fileType: file.type,
-    };
     const objUrl = URL.createObjectURL(file);
-    params.target.src = objUrl;
-    let loadSuccessful = false;
-    await new Promise((res) => {
-      params.target.onload = () => {
-        loadSuccessful = true;
-        res();
-      };
-      params.target.onerror = () => {
-        loadSuccessful = false;
-        res();
-      };
-    });
-    if (!loadSuccessful) return;
-    if (params.target.naturalWidth > 8000 || params.target.naturalHeight > 8000) {
-      this.serviceHandler.showErrorToast({ errorToastEl: this.errorToastEl, errorType: '.icon-error-filetype' });
-      return;
-    }
-
-    const { offsetWidth, offsetHeight } = params.target;
-    params.target.classList.add(CONTAIN_OBJECT);
-    params.target.classList.add(MOBILE_GRAY_BG);
-    this.canvasArea.classList.add(GRAY_BG);
-    if (this.canvasArea.naturalWidth > offsetWidth) {
-      params.target.classList.add(IMG_LANDSCAPE);
-      params.target.classList.add(FULL_HEIGHT);
-    } else {
-      params.target.classList.add(IMG_PORTRAIT);
-      params.target.classList.add(FULL_HEIGHT);
-    }
-    if (
-      this.canvasArea.naturalWidth == offsetWidth
-      && this.canvasArea.naturalHeight == offsetHeight
-    ) {
-      this.resetClasses(params.target, this.canvasArea);
-    }
-    this.operations.push(operationItem);
-    const callbackObj = [{
-      itemType: 'button',
-      actionType: params.callbackAction,
-      source: params.callbackActionSource,
-      target: params.callbackActionTarget,
-    },
-    ];
-    await this.executeAction(callbackObj, null);
+    const { target } = params;
+    target.src = objUrl;
   }
 
   async removeBackground(params) {
     const optype = 'removeBackground';
     let { source, target } = params;
-    if (typeof (source) == 'string') source = this.block.querySelector(source);
-    if (typeof (target) == 'string') target = this.block.querySelector(target);
-    const parsedUrl = new URL(source.src);
-    const imgsrc = ((!source.src.startsWith('blob:')) && parsedUrl.origin == window.origin)
-      ? `${parsedUrl.origin}${parsedUrl.pathname}`
-      : source.src;
+    if (typeof(source) == 'string') source = this.block.querySelector(source);
+    if (typeof(target) == 'string') target = this.block.querySelector(target);
     const operationItem = {
       operationType: optype,
       sourceAssetId: null,
-      sourceAssetUrl: null,
-      sourceSrc: imgsrc,
+      sourceSrc: source.src,
       assetId: null,
       assetUrl: null,
     };
-    if (params.cachedOutputUrl && this.renderCachedExperience) {
-      await delay(500);
-      operationItem.sourceAssetUrl = imgsrc;
-      operationItem.assetUrl = params.cachedOutputUrl;
-    } else {
-      let assetId = null;
-      if (
-        this.operations.length
-        && this.operations[this.operations.length - 1].assetId
-      ) {
-        assetId = this.operations[this.operations.length - 1].assetId;
-      } else assetId = await this.uploadAsset(imgsrc);
-      operationItem.sourceAssetId = assetId;
-      const removeBgOptions = { body: `{"surfaceId":"Unity","assets":[{"id": "${assetId}"}]}` };
-      const resJson = await this.serviceHandler.postCallToService(
-        this.psApiConfig.psEndPoint[optype],
-        removeBgOptions,
-        {
-          errorToastEl: this.errorToastEl,
-          errorType: '.icon-error-request',
-        },
-      );
-      operationItem.assetId = resJson.assetId;
-      operationItem.assetUrl = resJson.outputUrl;
-    }
-    target.src = operationItem.assetUrl;
+    let assetId = null;
+    if (this.operations.length) assetId = this.operations[this.operations - 1].assetId;
+    else assetId = await this.uploadAsset(source.src);
+    operationItem.sourceAssetId = assetId;
+    const removeBgOptions = { body: `{"surfaceId":"Unity","assets":[{"id": "${assetId}"}]}` };
+    const resJson = await this.serviceHandler.postCallToService(
+      this.psApiConfig.psEndPoint[optype],
+      removeBgOptions,
+    );
+    const opId = resJson.assetId;
+    operationItem.assetId = opId;
+    operationItem.assetUrl = resJson.outputUrl;
+    target.src = resJson.outputUrl;
     await loadImg(target);
     this.operations.push(operationItem);
   }
 
   async changeBackground(params) {
     const opType = 'changeBackground';
-    let { source, target, backgroundSrc } = params;
-    if (typeof (source) == 'string') source = this.block.querySelector(source);
-    if (typeof (target) == 'string') target = this.block.querySelector(target);
-    if (typeof (backgroundSrc) == 'string' && !backgroundSrc.startsWith('http')) backgroundSrc = this.block.querySelector(backgroundSrc);
-    const parsedUrl = new URL(backgroundSrc);
-    const imgsrc = `${parsedUrl.origin}${parsedUrl.pathname}`;
+    let { source, target, backgroundSrc} = params;
+    if (typeof(source) == 'string') source = this.block.querySelector(source);
+    if (typeof(target) == 'string') target = this.block.querySelector(target);
+    if (typeof(backgroundSrc) == 'string' && !backgroundSrc.startsWith("http")) backgroundSrc = this.block.querySelector(backgroundSrc);
     const operationItem = {
       operationType: opType,
       sourceSrc: source.src,
-      backgroundSrc: imgsrc,
+      backgroundSrc: backgroundSrc.src,
       assetId: null,
       assetUrl: null,
       fgId: null,
       bgId: null,
     };
-    if (params.cachedOutputUrl && this.renderCachedExperience) {
-      await delay(500);
-      operationItem.assetUrl = params.cachedOutputUrl;
-    } else {
-      const fgId = this.operations[this.operations.length - 1].assetId;
-      const bgId = await this.uploadAsset(imgsrc);
-      const changeBgOptions = {
-        body: `{
-                "assets": [{ "id": "${fgId}" },{ "id": "${bgId}" }],
-                "metadata": {
-                  "foregroundImageId": "${fgId}",
-                  "backgroundImageId": "${bgId}"
-                }
-              }`,
-      };
-      const resJson = await this.serviceHandler.postCallToService(
-        this.psApiConfig.psEndPoint[opType],
-        changeBgOptions,
-        {
-          errorToastEl: this.errorToastEl,
-          errorType: '.icon-error-request',
-        },
-      );
-      const changeBgId = resJson.assetId;
-      operationItem.assetId = changeBgId;
-      operationItem.fgId = fgId;
-      operationItem.bgId = bgId;
-      operationItem.assetUrl = resJson.outputUrl;
-    }
-    target.src = operationItem.assetUrl;
+    const fgId = this.operations[this.operations.length - 1].assetId;
+    const bgId = await this.uploadAsset(backgroundSrc);
+    const changeBgOptions = {
+      body: `{
+              "assets": [{ "id": "${fgId}" },{ "id": "${bgId}" }],
+              "metadata": {
+                "foregroundImageId": "${fgId}",
+                "backgroundImageId": "${bgId}"
+              }
+            }`,
+    };
+    const resJson = await this.serviceHandler.postCallToService(
+      this.psApiConfig.psEndPoint[opType],
+      changeBgOptions,
+    );
+    const changeBgId = resJson.assetId;
+    operationItem.assetId = changeBgId;
+    operationItem.assetUrl = resJson.outputUrl;
+    operationItem.fgId = fgId;
+    operationItem.bgId = bgId;
+    target.src = resJson.outputUrl;
     await loadImg(target);
     this.operations.push(operationItem);
   }
@@ -490,48 +319,40 @@ export default class ActionBinder {
     this.operations.push(operationItem);
   }
 
-  async continueInApp() {
+  continueInApp() {
     const cOpts = {
+      assetId: null,
       targetProduct: this.workflowCfg.productName,
       payload: {
         locale: getLocale(),
+        finalAssetId: null,
         operations: [],
       },
     };
     this.operations.forEach((op, i) => {
-      if (!cOpts.assetId && !cOpts.href) {
-        if (op.sourceAssetUrl) cOpts.href = op.sourceAssetUrl;
-        else if (op.sourceAssetId) cOpts.assetId = op.sourceAssetId;
-      }
       const idx = cOpts.payload.operations.length;
-      if (idx > 0 && cOpts.payload.operations[idx - 1] == op.operationType) cOpts.pop();
-      cOpts.payload.operations.push({ name: op.operationType });
-      if (op.assetId) {
-        cOpts.payload.finalAssetId = op.assetId;
+      if ((i > 0) && (this.operations[i - 1].operationType == op.operationType)) {
+        cOpts.payload.operations[idx - 1][op.adjustmentType] = parseInt(op.filterValue.sliderElem.value, 10);
+      } else {
+        cOpts.payload.operations.push({ name: op.operationType });
+        if (op.sourceAssetId && !cOpts.assetId) cOpts.assetId = op.sourceAssetId;
+        if (op.assetId) cOpts.payload.finalAssetId = op.assetId;
         if (op.operationType == 'changeBackground') cOpts.payload.operations[idx].assetIds = [op.assetId];
-      } else if (op.assetUrl) {
-        cOpts.payload.finalAssetUrl = op.assetUrl;
-        if (op.operationType == 'changeBackground') cOpts.payload.operations[idx].hrefs = [op.assetUrl];
-      }
-      if (op.operationType == 'imageAdjustment' && op.adjustmentType && op.filterValue) {
-        cOpts.payload.operations[idx][op.adjustmentType] = parseInt(
-          op.filterValue.sliderElem.value,
-          10,
-        );
+        if (op.adjustmentType && op.filterValue) {
+          cOpts.payload.operations[idx][op.adjustmentType] = parseInt(op.filterValue.sliderElem.value, 10);
+        }
       }
     });
-    const { url } = await this.serviceHandler.postCallToService(
+    this.serviceHandler.postCallToService(
       this.psApiConfig.connectorApiEndPoint,
       { body: JSON.stringify(cOpts) },
-      {
-        errorToastEl: this.errorToastEl,
-        errorType: '.icon-error-request',
-      },
     );
-    window.location.href = url;
   }
 
-  createSpectrumProgress() {
+  async createSpectrumProgress() {
+    await new Promise((resolve) => {
+      loadStyle(`${getUnityLibs()}/core/features/progress-circle/progress-circle.css`, resolve);
+    });
     const pdom = `<div class="spectrum-ProgressCircle-track"></div>
     <div class="spectrum-ProgressCircle-fills">
       <div class="spectrum-ProgressCircle-fillMask1">
@@ -550,34 +371,6 @@ export default class ActionBinder {
       { class: 'progress-circle' },
       createTag('div', { class: 'spectrum-ProgressCircle spectrum-ProgressCircle--indeterminate' }, pdom),
     );
-    this.canvasArea.append(loader);
     return loader;
-  }
-
-  async createErrorToast() {
-    const alertText = createTag('div', { class: 'alert-text' }, createTag('p', {}, 'Alert Text'));
-    const alertIcon = createTag(
-      'div',
-      { class: 'alert-icon' },
-      '<svg><use xlink:href="#unity-alert-icon"></use></svg>',
-    );
-    alertIcon.append(alertText);
-    const alertClose = createTag(
-      'a',
-      { class: 'alert-close', href: '#' },
-      '<svg><use xlink:href="#unity-close-icon"></use></svg>',
-    );
-    alertClose.append(createTag('span', { class: 'alert-close-text' }, 'Close error toast'));
-    const alertContent = createTag('div', { class: 'alert-content' });
-    alertContent.append(alertIcon, alertClose);
-    const errholder = createTag('div', { class: 'alert-holder' }, createTag('div', { class: 'alert-toast' }, alertContent));
-    alertClose.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.target.closest('.alert-holder').classList.remove('show');
-    });
-    const { decorateDefaultLinkAnalytics } = await import(`${getLibs()}/martech/attributes.js`);
-    decorateDefaultLinkAnalytics(errholder);
-    this.canvasArea.append(errholder);
-    return errholder;
   }
 }

@@ -1,30 +1,26 @@
-/* eslint-disable class-methods-use-this */
 import {
   createTag,
-  getLibs,
+  decorateDefaultLinkAnalytics,
+  loadSvgs,
   priorityLoad,
   defineDeviceByScreenSize,
 } from '../../../scripts/utils.js';
 
 export default class UnityWidget {
-  constructor(target, el, workflowCfg, spriteContent) {
+  constructor(target, el, workflowCfg) {
     this.el = el;
     this.target = target;
     this.workflowCfg = workflowCfg;
     this.widget = null;
     this.actionMap = {};
-    this.spriteContent = spriteContent;
   }
 
   async initWidget() {
-    const [iWidget, unityaa, unityoa, unitySprite] = ['unity-widget', 'unity-action-area', 'unity-option-area', 'unity-sprite-container']
-      .map((c) => createTag('div', { class: c }));
-    iWidget.append(unitySprite, unityoa, unityaa);
-    unitySprite.innerHTML = this.spriteContent;
-    this.widget = iWidget;
-    this.target.append(iWidget);
+    const [iWidget, unityaa, unityoa] = ['unity-widget', 'unity-action-area', 'unity-option-area']
+    .map((c) => createTag('div', { class: c }));
+    iWidget.append(unityoa, unityaa);
     const refreshCfg = this.el.querySelector('.icon-product-icon');
-    if (refreshCfg) this.addRestartOption(unityaa);
+    if (refreshCfg) await this.addRestartOption(refreshCfg.closest('li'), unityaa);
     this.workflowCfg.enabledFeatures.forEach((f, idx) => {
       const addClasses = idx === 0 ? 'ps-action-btn show' : 'ps-action-btn';
       this.addFeatureButtons(
@@ -33,25 +29,36 @@ export default class UnityWidget {
         unityaa,
         unityoa,
         addClasses,
-        idx,
-        this.workflowCfg.enabledFeatures.length,
       );
     });
     const uploadCfg = this.el.querySelector('.icon-upload');
     if (uploadCfg) this.addFeatureButtons('upload', uploadCfg.closest('li'), unityaa, unityoa, 'show');
     const continueInApp = this.el.querySelector('.icon-app-connector');
     if (continueInApp) this.addFeatureButtons('continue-in-app', continueInApp.closest('li'), unityaa, unityoa, '');
-    const { decorateDefaultLinkAnalytics } = await import(`${getLibs()}/martech/attributes.js`);
+    this.widget = iWidget;
+    const svgs = iWidget.querySelectorAll('.show img[src*=".svg"');
+    await loadSvgs(svgs);
+    this.target.append(iWidget);
     decorateDefaultLinkAnalytics(iWidget);
     return this.actionMap;
   }
 
-  createActionBtn(btnCfg, btnClass, imgId, swapOrder = false) {
-    const btnIcon = createTag('div', { class: 'btn-icon' }, `<svg><use xlink:href="#unity-${imgId}-icon"></use></svg>`);
-    const btnText = createTag('div', { class: 'btn-text' }, btnCfg.innerText.split('\n')[0].trim());
-    const actionBtn = createTag('a', { href: '#', class: `unity-action-btn ${btnClass}` }, btnText);
-    if (swapOrder) actionBtn.append(btnIcon);
-    else actionBtn.prepend(btnIcon);
+  createActionBtn(btnCfg, btnClass) {
+    const txt = btnCfg.innerText;
+    const img = btnCfg.querySelector('img[src*=".svg"]');
+    const actionBtn = createTag('a', { href: '#', class: `unity-action-btn ${btnClass}` });
+    let swapOrder = false;
+    if (img) { 
+      actionBtn.append(createTag('div', { class: 'btn-icon' }, img));
+      if (img.nextSibling?.nodeName == '#text') swapOrder = true;
+    }
+    if (txt) {
+      const btnTxt = createTag('div', { class: 'btn-text' }, txt.split('\n')[0].trim());
+      const viewport = defineDeviceByScreenSize();
+      if (viewport === 'MOBILE') btnTxt.innerText = btnTxt.innerText.split(' ').toSpliced(1, 0, '\n').join(' ');
+      if (swapOrder) actionBtn.prepend(btnTxt);
+      else actionBtn.append(btnTxt);
+    }
     return actionBtn;
   }
 
@@ -71,210 +78,117 @@ export default class UnityWidget {
     ];
   }
 
-  refreshHandler(ih, rh, mrh) {
-    this.target.querySelector('img').style.filter = '';
-    ih.classList.add('show');
-    rh.classList.remove('show');
-    mrh.classList.remove('show');
-  }
-
-  addRestartOption(unityaa) {
-    const iconHolder = createTag('div', { class: 'widget-product-icon show' }, `<svg><use xlink:href="#unity-${this.workflowCfg.productName.toLowerCase()}-icon"></use></svg>`);
-    const refreshHolder = createTag('a', { href: '#', class: 'widget-refresh-button' }, '<svg><use xlink:href="#unity-refresh-icon"></use></svg>');
-    refreshHolder.append(createTag('div', { class: 'widget-refresh-text' }, 'Restart'));
+  async addRestartOption(refreshCfg, unityaa) {
+    const [prodIcon, refreshIcon] = refreshCfg.querySelectorAll('img[src*=".svg"]');
+    const iconHolder = createTag('div', { class: 'widget-product-icon show' }, prodIcon);
+    const refreshAnalyics = createTag('div', { class: 'widget-refresh-text' }, 'Restart');
+    const refreshHolder = createTag('a', { href: '#', class: 'widget-refresh-button' }, refreshIcon);
+    refreshHolder.append(refreshAnalyics);
     unityaa.append(iconHolder);
     const mobileRefreshHolder = refreshHolder.cloneNode(true);
     [refreshHolder, mobileRefreshHolder].forEach((w) => {
       w.addEventListener('click', () => {
-        this.refreshHandler(iconHolder, refreshHolder, mobileRefreshHolder);
+        this.target.querySelector('img').style.filter = '';
+        iconHolder.classList.add('show');
+        refreshHolder.classList.remove('show');
+        mobileRefreshHolder.classList.remove('show');
       });
     });
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) {
-          this.refreshHandler(iconHolder, refreshHolder, mobileRefreshHolder);
-        }
-      });
-    });
-    observer.observe(this.target);
     this.initRefreshActionMap('.unity-action-area .widget-refresh-button');
     this.initRefreshActionMap('.interactive-area > .widget-refresh-button');
     unityaa.append(refreshHolder);
     this.target.append(mobileRefreshHolder);
   }
 
-  addFeatureButtons(
-    featName,
-    authCfg,
-    actionArea,
-    optionArea,
-    addClasses,
-    currFeatureIdx,
-    totalFeatures,
-  ) {
-    let btn = null;
-    switch (featName) {
-      case 'removebg':
-        btn = this.createActionBtn(authCfg, `${featName}-button ${addClasses}`, featName);
-        actionArea.append(btn);
-        this.initRemoveBgActions(featName, btn, authCfg);
-        break;
-      case 'upload':
-        {
-          btn = this.createActionBtn(authCfg, `${featName}-button ${addClasses}`, featName);
-          actionArea.append(btn);
-          const inpel = createTag('input', {
-            class: 'file-upload',
-            type: 'file',
-            accept: 'image/png,image/jpg,image/jpeg',
-            tabIndex: -1,
-          });
+  addFeatureButtons(featName, authCfg, actionArea, optionArea, addClasses) {
+    const btn = this.createActionBtn(authCfg, `${featName}-button ${addClasses}`);
+    actionArea.append(btn);
+    if (!authCfg.querySelector('ul')) {
+      switch (featName) {
+        case 'removebg':
+          this.initRemoveBgActions(featName, btn);
+          break;
+        case 'upload':
+          const inpel = createTag('input', { class: 'file-upload', type: 'file', accept: 'image/png,image/jpg,image/jpeg', tabIndex: -1 });
           btn.append(inpel);
-          inpel.addEventListener('click', (e) => {
-            e.stopPropagation();
+          btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') inpel.click();
           });
           this.initUploadActions(featName);
-        }
-        break;
-      case 'continue-in-app':
-        btn = this.createActionBtn(
-          authCfg,
-          `${featName}-button ${addClasses}`,
-          this.workflowCfg.productName.toLowerCase()
-        );
-        actionArea.append(btn);
-        this.initContinueInAppActions(featName);
-        break;
-      default:
-        btn = this.createActionBtn(authCfg, `${featName}-button ${addClasses}`, featName);
-        actionArea.append(btn);
-        this.addFeatureTray(
-          featName,
-          authCfg,
-          optionArea,
-          btn,
-          addClasses,
-          currFeatureIdx,
-          totalFeatures,
-        );
+          break;
+        case 'continue-in-app':
+          this.initContinueInAppActions(featName);
+          break;
+        default:
+          break;
+      }
+      return;
     }
+    this.addFeatureTray(featName, authCfg, optionArea, btn, addClasses);
   }
 
-  updateQueryParameter(url, paramName = 'format', formatName = 'jpeg') {
-    try {
-      const urlObj = new URL(url);
-      const params = urlObj.searchParams;
-      params.set(paramName, formatName);
-      return urlObj.toString();
-    } catch (error) {
-      return null;
-    }
-  }
-
-  initRemoveBgActions(featName, btn, authCfg) {
+  initRemoveBgActions(featName, btn) {
     this.actionMap[`.${featName}-button`] = [
       {
         actionType: 'show',
         targets: ['.progress-circle'],
-      },
-      {
+      }, {
         itemType: 'button',
         actionType: featName,
         source: this.target.querySelector('img'),
         target: this.target.querySelector('img'),
-        cachedOutputUrl: authCfg.querySelector(':scope ul li img')
-          ? this.updateQueryParameter(
-            authCfg.querySelector(':scope ul li img').src,
-          )
-          : null,
-      },
-      {
+      }, {
         actionType: 'show',
-        targets: [
-          '.interactive-area > .widget-refresh-button',
-          '.unity-widget .widget-refresh-button',
-          '.ps-action-btn.show + .ps-action-btn',
-          '.changebg-options-tray',
-          '.continue-in-app-button',
-        ],
-      },
-      {
+        targets: ['.ps-action-btn.show + .ps-action-btn', '.changebg-options-tray', '.continue-in-app-button'],
+      }, {
         actionType: 'hide',
-        targets: [btn, '.progress-circle', '.unity-action-area .widget-product-icon'],
+        targets: [btn, '.progress-circle'],
       },
     ];
   }
 
-  initChangeBgActions(key, btn, bgImg, bgSelectorTray, authCfg, currFeatureIdx, totalFeatures) {
+  initChangeBgActions(key, btn, bgImg, bgSelectorTray) {
     this.actionMap[key] = [
       {
         actionType: 'show',
         targets: ['.progress-circle'],
-      },
-      {
+      }, {
         itemType: 'button',
         actionType: 'changebg',
         backgroundSrc: bgImg.src,
         source: this.target.querySelector('img'),
         target: this.target.querySelector('img'),
-        cachedOutputUrl: authCfg.querySelector(':scope ul li img')
-          ? this.updateQueryParameter(
-            authCfg.querySelector(':scope ul li img').src
-          )
-          : null,
-      },
-      {
+      }, {
         actionType: 'show',
-        targets: ['.continue-in-app-button'],
-      },
-      {
-        actionType: 'hide',
-        targets: ['.progress-circle'],
-      },
-    ];
-    if (currFeatureIdx < totalFeatures - 1) {
-      this.actionMap[key].push({
-        actionType: 'show',
-        targets: ['.ps-action-btn.show + .ps-action-btn', '.adjustment-options-tray'],
+        targets: ['.ps-action-btn.show + .ps-action-btn', '.adjustment-options-tray', '.continue-in-app-button'],
       }, {
         actionType: 'hide',
         targets: [btn, bgSelectorTray, '.progress-circle'],
-      });
-    }
+      },
+    ];
   }
 
   initUploadActions(featName) {
-    this.actionMap[`.${featName}-button`] = [
-      {
-        actionType: 'dispatchClickEvent',
-        target: '.file-upload',
-      },
-    ];
     this.actionMap[`.${featName}-button .file-upload`] = [
       {
-        actionType: 'hide',
-        targets: ['.unity-action-area .widget-product-icon'],
-      },
-      {
         actionType: 'show',
-        targets: [
-          '.progress-circle',
-          '.interactive-area > .widget-refresh-button',
-          '.unity-widget .widget-refresh-button'],
+        targets: ['.progress-circle'],
       }, {
         itemType: 'button',
         actionType: 'upload',
         assetType: 'img',
         target: this.target.querySelector('img'),
-        callbackAction: 'removebg',
-        callbackActionSource: this.target.querySelector('img'),
-        callbackActionTarget: this.target.querySelector('img'),
+      }, {
+        itemType: 'button',
+        actionType: 'removebg',
+        source: this.target.querySelector('img'),
+        target: this.target.querySelector('img'),
+      }, {
+        actionType: 'show',
+        targets: ['.changebg-button'],
       }, {
         actionType: 'hide',
         targets: ['.ps-action-btn.show', '.unity-option-area > div.show', '.progress-circle'],
-      }, {
-        actionType: 'show',
-        targets: ['.changebg-button', '.unity-option-area .changebg-options-tray', '.continue-in-app-button'],
       },
     ];
   }
@@ -289,10 +203,10 @@ export default class UnityWidget {
     ];
   }
 
-  addFeatureTray(featName, authCfg, optionArea, btn, addClasses, currFeatureIdx, totalFeatures) {
+  addFeatureTray(featName, authCfg, optionArea, btn, addClasses) {
     switch (featName) {
       case 'changebg': {
-        const tray = this.addChangeBgTray(btn, authCfg, optionArea, addClasses.indexOf('show') > -1, currFeatureIdx, totalFeatures);
+        const tray = this.addChangeBgTray(btn, authCfg, optionArea, addClasses.indexOf('show') > -1);
         this.actionMap[`.${featName}-button`] = [
           {
             actionType: 'toggle',
@@ -316,18 +230,9 @@ export default class UnityWidget {
     }
   }
 
-  updateQueryParam(url, params) {
-    const parsedUrl = new URL(url);
-    Object.entries(params).forEach(([key, value]) => {
-      parsedUrl.searchParams.set(key, value);
-    });
-    return parsedUrl;
-  }
-
-  addChangeBgTray(btn, authCfg, optionArea, isVisible, currFeatureIdx, totalFeatures) {
+  addChangeBgTray(btn, authCfg, optionArea, isVisible) {
     const bgSelectorTray = createTag('div', { class: `changebg-options-tray ${isVisible ? 'show' : ''}` });
-    const bgOptions = authCfg.querySelectorAll(':scope > ul > li');
-    const thumbnailSrc = [];
+    const bgOptions = authCfg.querySelectorAll(':scope ul li');
     [...bgOptions].forEach((o, num) => {
       let thumbnail = null;
       let bgImg = null;
@@ -337,11 +242,8 @@ export default class UnityWidget {
       const optionSelector = `changebg-option option-${num}`;
       const a = createTag('a', { href: '#', class: optionSelector }, thumbnail);
       bgSelectorTray.append(a);
-      this.initChangeBgActions(`.changebg-option.option-${num}`, btn, bgImg, bgSelectorTray, o, currFeatureIdx, totalFeatures);
+      this.initChangeBgActions(`.changebg-option.option-${num}`, btn, bgImg, bgSelectorTray);
       a.addEventListener('click', (e) => { e.preventDefault(); });
-    });
-    this.widget.addEventListener('click', () => {
-      priorityLoad(thumbnailSrc);
     });
     optionArea.append(bgSelectorTray);
     return bgSelectorTray;
