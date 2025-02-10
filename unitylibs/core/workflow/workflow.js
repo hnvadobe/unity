@@ -283,7 +283,7 @@ class WfInitiator {
       enabledFeatures: [],
       featureCfg: [],
       errors: {},
-      supportedTexts: workflowCfg[wfName]?.stList ?? {},
+      supportedTexts: workflowCfg[wfName]?.stList ?? null,
     };
   }
 
