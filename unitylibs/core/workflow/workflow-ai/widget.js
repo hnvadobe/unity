@@ -1,27 +1,23 @@
 import { createTag } from '../../../scripts/utils.js';
 
 export default class UnityWidget {
-  constructor(target, el, workflowCfg, spriteCon) {
+  constructor(target, el, workflowCfg) {
     this.el = el;
     this.target = target;
     this.workflowCfg = workflowCfg;
     this.widget = null;
     this.actionMap = {};
-    this.spriteCon = spriteCon;
   }
 
   async initWidget() {
-    const [widgetWrap, widget, unitySprite] = ['ex-unity-wrap', 'ex-unity-widget', 'unity-sprite-container']
-      .map((c) => createTag('div', { class: c }));
-    this.widgetWrap = widgetWrap;
-    this.widget = widget;
-    unitySprite.innerHTML = this.spriteCon;
-    this.widgetWrap.append(unitySprite);
+    this.widgetWrap = createTag('div', { class: 'ex-unity-wrap' });
+    this.widget = createTag('div', { class: 'ex-unity-widget' });
     this.createBg();
-    this.workflowCfg.placeholder = this.popPlaceholders();
-    const inputWrapper = this.createInpWrap(this.workflowCfg.placeholder);
-    const dropdown = this.genDropdown(this.workflowCfg.placeholder);
     const comboboxContainer = createTag('div', { class: 'autocomplete', role: 'combobox' });
+    const placeholders = this.popPlaceholders();
+    this.workflowCfg.placeholder = placeholders;
+    const inputWrapper = this.createInpWrap(placeholders);
+    const dropdown = this.genDropdown(placeholders);
     comboboxContainer.append(inputWrapper, dropdown);
     this.widget.append(comboboxContainer);
     this.addWidget();
@@ -71,7 +67,7 @@ export default class UnityWidget {
     });
     const titleCon = createTag('li', { class: 'drop-title-con', 'aria-labelledby': 'prompt-suggestions' });
     const title = createTag('span', { class: 'drop-title', id: 'prompt-suggestions' }, `${ph['placeholder-prompt']} ${ph['placeholder-suggestions']}`);
-    const closeBtn = createTag('button', { class: 'close-btn', 'daa-ll': 'drop-close', 'aria-label': 'Close dropdown' }, '<svg><use xlink:href="#unity-close-icon"></use></svg>');
+    const closeBtn = createTag('button', { class: 'close-btn', 'daa-ll': 'drop-close', 'aria-label': 'Close dropdown' });
     titleCon.append(title, closeBtn);
     dd.append(titleCon);
     const prompts = this.el.querySelectorAll('.icon-prompt');
@@ -84,7 +80,7 @@ export default class UnityWidget {
         'aria-label': el.closest('li').innerText,
         'aria-description': `${ph['placeholder-prompt']} ${ph['placeholder-suggestions']}`,
         'daa-ll': `drop-cur-prompt-${idx}|${el.closest('li').innerText}`,
-      }, `<svg><use xlink:href="#unity-prompt-icon"></use></svg> ${el.closest('li').innerText}`);
+      }, el.closest('li').innerText);
       dd.append(item);
     });
     dd.append(createTag('li', { class: 'drop-sep', role: 'separator' }));
@@ -95,7 +91,7 @@ export default class UnityWidget {
   createFooter(ph) {
     const footer = createTag('li', { class: 'drop-footer' });
     const tipEl = this.el.querySelector('.icon-tip')?.closest('li');
-    const tipCon = createTag('div', { id: 'tip-content', class: 'tip-con', tabindex: '-1', role: 'note', 'aria-label': `${ph['placeholder-tip']} ${tipEl?.innerText}` }, '<svg><use xlink:href="#unity-info-icon"></use></svg>');
+    const tipCon = createTag('div', { id: 'tip-content', class: 'tip-con', tabindex: '-1', role: 'note', 'aria-label': `${ph['placeholder-tip']} ${tipEl?.innerText}` });
     const tipText = createTag('span', { class: 'tip-text', id: 'tip-text' }, `${ph['placeholder-tip']}:`);
     const tipDesc = createTag('span', { class: 'tip-desc', id: 'tip-desc' }, tipEl?.innerText || '');
     tipCon.append(tipText, tipDesc);

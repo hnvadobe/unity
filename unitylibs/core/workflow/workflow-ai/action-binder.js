@@ -29,7 +29,6 @@ export default class ActionBinder {
     this.surpriseBtn = this.getElement('.surprise-btn');
     this.widget = this.getElement('.ex-unity-widget');
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
-    this.boundOutsideClickHandler = this.handleOutsideClick.bind(this);
     this.viewport = defineDeviceByScreenSize();
     this.addAccessibility();
     this.widgetWrap = this.getElement('.ex-unity-wrap');
@@ -112,11 +111,10 @@ export default class ActionBinder {
         this.sendAnalyticsOnFocus = false;
       }
     });
-    el.addEventListener('focusout', ({ relatedTarget, currentTarget }) => {
-      if (!relatedTarget) {
-        if (this.widget.contains(currentTarget)) return;
+    el.addEventListener('focusout', ({ relatedTarget }) => {
+      if (!this.widget.contains(relatedTarget)) {
+        this.hideDropdown();
       }
-      if (!this.widget.contains(relatedTarget)) this.hideDropdown();
     });
   }
 
@@ -150,7 +148,11 @@ export default class ActionBinder {
     try {
       if (!this.serviceHandler) await this.loadServiceHandler();
       this.maxResults = fetchType === 'refresh' ? this.maxResults * 2 : 12;
-      if (fetchType !== 'refresh' && this.query) sendAnalyticsEvent(new CustomEvent('promptInput', { detail: { query: this.query } }));
+      if (fetchType !== 'refresh' && this.query) {
+        sendAnalyticsEvent(
+          new CustomEvent('promptInput', { detail: { query: this.query } }),
+        );
+      }
       const payload = {
         query: this.query,
         targetProduct: this.apiConfig.productName,
@@ -251,7 +253,7 @@ export default class ActionBinder {
         role: 'option',
         'aria-label': suggestion,
         'aria-description': `${this.workflowCfg.placeholder['placeholder-suggestions']} (English ${this.workflowCfg.placeholder['placeholder-only']})`,
-      }, `<svg><use xlink:href="#unity-search-icon"></use></svg> ${suggestion}`);
+      }, suggestion);
       const referenceNode = header.nextSibling;
       this.dropdown.insertBefore(item, referenceNode);
     });
@@ -260,8 +262,8 @@ export default class ActionBinder {
   createDynamicHeader() {
     const elements = [
       { tag: 'span', attrs: { class: 'title-text', id: 'prompt-suggestions' }, content: `${this.workflowCfg.placeholder['placeholder-suggestions']} (English ${this.workflowCfg.placeholder['placeholder-only']})` },
-      { tag: 'button', attrs: { class: 'refresh-btn dynamic', 'daa-ll': 'prompt-dropdown-refresh', 'aria-label': 'Refresh suggestions' }, content: '<svg><use xlink:href="#unity-refresh-icon"></use></svg>' },
-      { tag: 'button', attrs: { class: 'close-btn dynamic', 'daa-ll': 'prompt-dropdown-close', 'aria-label': 'Close dropdown' }, content: '<svg><use xlink:href="#unity-close-icon"></use></svg>' },
+      { tag: 'button', attrs: { class: 'refresh-btn dynamic', 'daa-ll': 'prompt-dropdown-refresh', 'aria-label': 'Refresh suggestions' } },
+      { tag: 'button', attrs: { class: 'close-btn dynamic', 'daa-ll': 'prompt-dropdown-close', 'aria-label': 'Close dropdown' } },
     ];
     const header = createTag('li', { class: 'drop-title-con dynamic', 'aria-labelledby': 'prompt-suggestions' });
     elements.forEach(({ tag, attrs, content = '' }) => {
@@ -326,11 +328,12 @@ export default class ActionBinder {
   getDropdownItems() {
     if (!this.dropdown) return [];
     const dynamicItems = Array.from(this.dropdown.querySelectorAll('.drop-item.dynamic'));
-    let tipCon = null;
-    if (this.viewport !== 'MOBILE') tipCon = this.dropdown.querySelector('.tip-con');
-    if (dynamicItems.length > 0) return tipCon ? [...dynamicItems, tipCon] : dynamicItems;
-    const allItems = Array.from(this.dropdown.querySelectorAll('.drop-item'));
-    return tipCon ? [...allItems, tipCon] : allItems;
+    if (dynamicItems.length > 0) {
+      const tipCon = this.dropdown.querySelector('.tip-con');
+      if (tipCon) dynamicItems.push(tipCon);
+      return dynamicItems;
+    }
+    return Array.from(this.dropdown.querySelectorAll('.drop-item, .tip-con'));
   }
 
   getFocusElems(isDynamic) {
@@ -374,8 +377,13 @@ export default class ActionBinder {
   }
 
   moveFocusWithArrow(dropItems, direction) {
-    if (this.activeIndex === -1 || !this.isDropdownItemFocused(dropItems)) this.activeIndex = direction === 'down' ? 0 : dropItems.length - 1;
-    else this.activeIndex = direction === 'down' ? (this.activeIndex + 1) % dropItems.length : (this.activeIndex - 1 + dropItems.length) % dropItems.length;
+    if (this.activeIndex === -1 || !this.isDropdownItemFocused(dropItems)) {
+      this.activeIndex = direction === 'down' ? 0 : dropItems.length - 1;
+    } else {
+      this.activeIndex = direction === 'down'
+        ? (this.activeIndex + 1) % dropItems.length
+        : (this.activeIndex - 1 + dropItems.length) % dropItems.length;
+    }
     this.setActiveItem(dropItems, this.activeIndex, this.inputField);
   }
 
@@ -387,7 +395,9 @@ export default class ActionBinder {
     ev.preventDefault();
     const nonInteractiveRoles = ['note', 'presentation'];
     const role = document.activeElement.getAttribute('role');
-    if (role && nonInteractiveRoles.includes(role)) return;
+    if (role && nonInteractiveRoles.includes(role)) {
+      return;
+    }
     if (
       this.activeIndex >= 0
       && dropItems[this.activeIndex]
@@ -425,6 +435,7 @@ export default class ActionBinder {
 
   clearDropdown() {
     this.dropdown.querySelectorAll('.drop-item.dynamic, .drop-title-con.dynamic, .drop-empty-msg').forEach((el) => el.remove());
+    this.dropdown.classList.add('hidden');
     this.addAccessibility();
   }
 
@@ -433,7 +444,7 @@ export default class ActionBinder {
     this.dropdown.removeAttribute('inert');
     this.inputField.setAttribute('aria-expanded', 'true');
     this.dropdown.removeAttribute('aria-hidden');
-    document.addEventListener('click', this.boundOutsideClickHandler, true);
+    document.addEventListener('click', this.handleOutsideClick.bind(this), true);
   }
 
   hideDropdown() {
@@ -442,12 +453,14 @@ export default class ActionBinder {
       this.dropdown.setAttribute('inert', '');
       this.dropdown.setAttribute('aria-hidden', 'true');
       this.inputField.setAttribute('aria-expanded', 'false');
-      document.removeEventListener('click', this.boundOutsideClickHandler, true);
+      document.removeEventListener('click', this.handleOutsideClick.bind(this), true);
     }
   }
 
   handleOutsideClick(event) {
-    if (!this.widget.contains(event.target)) this.hideDropdown();
+    if (!this.widget.contains(event.target)) {
+      this.hideDropdown();
+    }
   }
 
   toggleSurpriseBtn() {
