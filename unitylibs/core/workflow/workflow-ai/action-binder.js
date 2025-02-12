@@ -35,6 +35,24 @@ export default class ActionBinder {
     this.widgetWrap = this.getElement('.ex-unity-wrap');
     this.scrRead = createTag('div', { class: 'sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
     this.widgetWrap.append(this.scrRead);
+    this.initAction();
+  }
+
+  initAction() {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+    if (!isIos) return;
+    window.addEventListener('pageshow', ({ persisted }) => {
+      if (!persisted || document.visibilityState !== 'visible') return;
+      const handleClick = ({ target }) => {
+        if (target === this.inputField) {
+          this.inputField.focus();
+          this.initActionListeners();
+          this.showDropdown();
+        }
+      };
+      document.addEventListener('click', handleClick, { once: true });
+    });
   }
 
   initializeApiConfig() {

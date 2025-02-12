@@ -154,7 +154,8 @@ export default class UnityWidget {
     waitForFooter();
     const checkVisibility = () => {
       const { top, bottom } = obsEl.getBoundingClientRect();
-      const isIntersecting = !(top >= window.innerHeight || bottom <= 0);
+      const isIntersecting = (top === 0 && bottom === 0)
+      || (bottom > 0 && top < window.innerHeight);
       this.addSticky({ isIntersecting });
     };
     requestAnimationFrame(() => requestAnimationFrame(checkVisibility));
@@ -165,7 +166,7 @@ export default class UnityWidget {
       el: observerEl,
       callback: (cfg) => this.addSticky(cfg),
       cfg: this.workflowCfg,
-      options: { root: null, rootMargin: '10px', threshold: [0.1, 0.9] },
+      options: { root: null, rootMargin: '200px', threshold: [0.1, 0.9] },
     });
 
     this.createCustIntsecObs({
